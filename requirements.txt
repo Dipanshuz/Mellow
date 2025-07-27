@@ -3,3 +3,6 @@ pandas
 plotly
 wordcloud
 matplotlib
+re
+emoji
+URlExtract
