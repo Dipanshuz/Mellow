@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 
 # --- Helper Functions ---
 
+# --- Helper Functions ---
+
 def parse_chat(chat_file):
     """
     Parses an exported WhatsApp chat file into a pandas DataFrame.
@@ -19,38 +21,46 @@ def parse_chat(chat_file):
     Returns:
         A pandas DataFrame with columns ['timestamp', 'sender', 'message'].
     """
-    # Regex to capture date, time, sender, and message
-    # This pattern handles both 12-hour and 24-hour time formats
-    pattern = re.compile(r'\[(\d{1,2}/\d{1,2}/\d{2,4}),\s(\d{1,2}:\d{2}:\d{2}\s?[AP]?M?)\]\s([^:]+):\s(.+)')
+    # Updated Regex to be more flexible with whitespace and different time formats.
+    # It now handles the narrow no-break space (u202f) that can appear before AM/PM.
+    pattern = re.compile(
+        r'\[(\d{1,2}/\d{1,2}/\d{2,4}),\s*(\d{1,2}:\d{2}:\d{2}[\s\u202f]?[APap]?\.?[Mm]?\.?)\]\s([^:]+):\s(.+)'
+    )
     
     lines = chat_file.getvalue().decode('utf-8').splitlines()
     
     chat_data = []
     for line in lines:
-        match = pattern.match(line)
+        # Use re.search() instead of re.match() to find the pattern anywhere in the line
+        # This handles hidden leading characters.
+        match = pattern.search(line)
         if match:
             date, time, sender, message = match.groups()
-            # Combine date and time to create a timestamp
-            timestamp_str = f"{date} {time.strip()}"
-            # Attempt to parse the timestamp
+            
+            # Clean up time string and combine with date
+            time = time.replace('\u202f', ' ').strip() # Replace narrow space with regular space
+            timestamp_str = f"{date} {time}"
+            
+            # Try parsing different datetime formats
             try:
-                timestamp = pd.to_datetime(timestamp_str, format='%d/%m/%y, %I:%M:%S %p', errors='coerce')
-                if pd.isna(timestamp):
-                     timestamp = pd.to_datetime(timestamp_str, format='%d/%m/%Y, %H:%M:%S', errors='coerce') # Fallback for 24hr format
-                
-                if not pd.isna(timestamp):
-                    chat_data.append([timestamp, sender.strip(), message.strip()])
-
+                # Format for '14/05/25, 9:33:53 PM'
+                timestamp = pd.to_datetime(timestamp_str, format='%d/%m/%y, %I:%M:%S %p', errors='raise')
             except ValueError:
-                # Skip lines that don't parse correctly
-                continue
-                
+                try:
+                    # Fallback for 24-hour format like '14/05/2025, 21:33:53'
+                    timestamp = pd.to_datetime(timestamp_str, format='%d/%m/%Y, %H:%M:%S', errors='raise')
+                except ValueError:
+                    # If parsing fails, skip this line
+                    continue
+            
+            chat_data.append([timestamp, sender.strip(), message.strip()])
+
     if not chat_data:
-        st.error("Could not parse the chat file. Please ensure it's a valid WhatsApp export.")
+        st.error("Could not parse the chat file. The format might be unsupported. Please ensure it's a valid WhatsApp text export.")
         return pd.DataFrame()
 
     df = pd.DataFrame(chat_data, columns=['timestamp', 'sender', 'message'])
-    df = df.dropna(subset=['timestamp']) # Drop rows where timestamp parsing failed
+    df = df.dropna(subset=['timestamp'])
     return df
 
 def analyze_romance(df, romantic_words):
