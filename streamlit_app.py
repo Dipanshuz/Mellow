@@ -9,6 +9,36 @@ import matplotlib.pyplot as plt
 
 # --- Helper Functions ---
 
+def analyze_love_you(df_husband, df_wife, husband_name, wife_name):
+    """
+    Counts the number of times "i love you" is said by each person.
+    
+    Args:
+        df_husband (pd.DataFrame): Husband's chat data.
+        df_wife (pd.DataFrame): Wife's chat data.
+        husband_name (str): Husband's name.
+        wife_name (str): Wife's name.
+        
+    Returns:
+        A pandas DataFrame with the counts for each person.
+    """
+    phrase = "i love you"
+    
+    # Count occurrences for the husband, ignoring case
+    husband_count = df_husband['message'].str.lower().str.contains(phrase, na=False).sum()
+    
+    # Count occurrences for the wife, ignoring case
+    wife_count = df_wife['message'].str.lower().str.contains(phrase, na=False).sum()
+    
+    # Create a DataFrame for plotting
+    love_df = pd.DataFrame([
+        {'Person': husband_name, 'Count': husband_count},
+        {'Person': wife_name, 'Count': wife_count}
+    ])
+    
+    return love_df
+
+
 def parse_chat(chat_file):
     """
     Parses an exported WhatsApp chat file, correctly handling multi-line messages and timestamp formats.
