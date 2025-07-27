@@ -4,5 +4,4 @@ plotly
 wordcloud
 matplotlib
 re
-emoji
-URlExtract
+URLExtract
