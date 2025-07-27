@@ -1,7 +1,15 @@
+import streamlit as st
 import pandas as pd
 import re
 import emoji
 from urlextract import URLExtract
+
+
+try:
+    import emoji
+    st.success("emoji module imported successfully!")
+except ModuleNotFoundError:
+    st.error("emoji module not found. Check requirements.txt or pip installation.")
 
 extractor = URLExtract()
 
@@ -75,8 +83,6 @@ def basic_chat_stats(df):
         'Messages Per Person': senders
     }
 
-
-import streamlit as st
 
 uploaded_file = st.file_uploader("Upload WhatsApp chat file", type=["txt"])
 
