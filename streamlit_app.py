@@ -220,6 +220,33 @@ if uploaded_file:
                     st.markdown("The most common words used by both of you.")
                     create_wordcloud(df)
 
+                    # This code goes inside the "if page == 'Overall Analysis':" block
+
+                    # --- "I Love You" Scoreboard ---
+                    st.header("❤️ 'I Love You' Scoreboard")
+                    st.markdown("A special count for the most important phrase!")
+                    
+                    # Analyze the count of "i love you"
+                    love_counts_df = analyze_love_you(df_husband, df_wife, husband_name, wife_name)
+                    
+                    if love_counts_df['Count'].sum() > 0:
+                        # Create a bar chart using Plotly Express
+                        fig_love = px.bar(
+                            love_counts_df, 
+                            x='Person', 
+                            y='Count', 
+                            title="Number of Times Each Person Said 'I Love You'",
+                            color='Person',
+                            labels={'Person': 'Partner', 'Count': 'Number of Times'},
+                            text='Count' # Display the count on the bars
+                        )
+                        fig_love.update_traces(textposition='outside')
+                        st.plotly_chart(fig_love)
+                    else:
+                        st.info("The phrase 'i love you' wasn't found in the chat. Time to say it more! 😉")
+                    
+                    
+
             elif page == f"{husband_name}'s Analysis":
                 with main_container:
                     st.header(f"🤵‍♂️ {husband_name}'s Romance Analysis")
