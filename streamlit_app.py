@@ -9,13 +9,9 @@ import matplotlib.pyplot as plt
 
 # --- Helper Functions ---
 
-# --- Helper Functions ---
-
-# --- Helper Functions ---
-
 def parse_chat(chat_file):
     """
-    Parses an exported WhatsApp chat file, correctly handling multi-line messages.
+    Parses an exported WhatsApp chat file, correctly handling multi-line messages and timestamp formats.
     
     Args:
         chat_file: The uploaded file object.
@@ -24,34 +20,20 @@ def parse_chat(chat_file):
         A pandas DataFrame with columns ['timestamp', 'sender', 'message'].
     """
     # Regex to find the start of any new message (date, time, and sender)
-    # This pattern is the delimiter for splitting the entire chat file.
-    # It looks for the opening bracket, date, comma, time, closing bracket, and the sender's name.
     line_start_pattern = re.compile(r'\[\d{1,2}/\d{1,2}/\d{2,4},\s\d{1,2}:\d{2}:\d{2}\s?[APap]?\.?[Mm]?\.?\]\s[^:]+:')
     
-    # Get the full content of the file
     content = chat_file.getvalue().decode('utf-8')
-    
-    # Split the content by the message start pattern. This separates the chat into individual messages.
-    messages = line_start_pattern.split(content)
-    
-    # The first element of the split is usually an empty string or the initial encryption message, so we skip it.
-    if len(messages) > 1:
-        messages = messages[1:]
-    else:
-        st.error("Could not find any messages in the file. The format might be incorrect.")
-        return pd.DataFrame()
-        
-    # Find all the timestamp/sender lines which will act as our keys
+    messages = line_start_pattern.split(content)[1:]
     timestamps_and_senders = line_start_pattern.findall(content)
-
-    if len(timestamps_and_senders) != len(messages):
-        st.error("Parsing error: Mismatch between message headers and content. The chat file might be corrupted.")
+    
+    if not messages or not timestamps_and_senders:
+        st.error("Could not find any valid message lines in the file. Please ensure it is a standard WhatsApp .txt export.")
         return pd.DataFrame()
 
     chat_data = []
     
-    # Regex to extract the details from the timestamp/sender line
     details_pattern = re.compile(
+        # Group 1: Date, Group 2: Time, Group 3: Sender
         r'\[(\d{1,2}/\d{1,2}/\d{2,4}),\s*(\d{1,2}:\d{2}:\d{2}[\s\u202f]?[APap]?\.?[Mm]?\.?)\]\s([^:]+):'
     )
 
@@ -63,20 +45,21 @@ def parse_chat(chat_file):
         if match:
             date, time, sender = match.groups()
             
-            # Clean up time string and combine with date
-            time = time.replace('\u202f', ' ').strip()
+            # Clean up the time string
+            time = time.replace('\u202f', ' ').strip() # Replace narrow no-break space
+            
+            # **THE FIX IS HERE**: The comma was removed from the format string
             timestamp_str = f"{date} {time}"
             
-            # Try parsing the timestamp
             try:
-                # Format for '14/05/25, 9:33:53 PM'
-                timestamp = pd.to_datetime(timestamp_str, format='%d/%m/%y, %I:%M:%S %p', errors='raise')
+                # Corrected format for '14/05/25 9:33:53 PM' (NO COMMA)
+                timestamp = pd.to_datetime(timestamp_str, format='%d/%m/%y %I:%M:%S %p', errors='raise')
             except ValueError:
                 try:
-                    # Fallback for 24-hour format or other variations
-                    timestamp = pd.to_datetime(timestamp_str, format='%d/%m/%Y, %H:%M:%S', errors='raise')
+                    # Corrected fallback format for 24-hour time (NO COMMA)
+                    timestamp = pd.to_datetime(timestamp_str, format='%d/%m/%Y %H:%M:%S', errors='raise')
                 except ValueError:
-                    continue # Skip this message if timestamp is unparseable
+                    continue # Skip if timestamp is still unparseable
             
             chat_data.append([timestamp, sender.strip(), message_body])
 
